@@ -1,0 +1,102 @@
+@test module;
+
+import main.{ book, create_book, get_all_books, book_review, create_book_review, get_reviews_by_rating, get_all_reviews_for_book };
+
+val book_keeper = rell.test.keypair(
+    priv = x"38DB92E6A14CB82985ADEB347895E1B7E6F893BC56FEC8BB2FA9C87A6B0298E8",
+    pub = x"023D2B6A585205F2DCCCC85CFFB903F3EAAFC488DA67C32A07F3FDC4015E83A5F4"
+);
+
+function test_add_book() {
+    rell.test.tx()
+        .op(create_book("00000001", "抹茶的自傳", "GJLMoTea"))
+        .op(create_book("00000002", "哲學家-抹茶的自傳II", "GJLMoTea"))
+        .sign(book_keeper)
+        .run();
+
+    val all_books = book @* { };
+
+    assert_equals(all_books.size(), 2);
+    assert_equals(all_books[0].title, "抹茶的自傳");
+    assert_equals(all_books[0].author, "GJLMoTea");
+    assert_equals(all_books[0].isbn, "00000001");
+}
+
+function test_get_books() {
+    rell.test.tx()
+        .op(create_book("00000001", "抹茶的自傳", "GJLMoTea"))
+        .op(create_book("00000002", "哲學家-抹茶的自傳II", "GJLMoTea"))
+        .sign(book_keeper)
+        .run();
+    val reviews = get_all_books();
+    assert_equals(reviews.size(), 2);
+}
+
+function test_add_book_review() {
+    rell.test.tx()
+        .op(create_book("00000001", "抹茶的自傳", "GJLMoTea"))
+        .op(create_book_review("00000001", "某網友", "這是一本好書", 5))
+        .op(create_book_review("00000001", "匿名評論者", "這是一本普通的書", 3))
+        .sign(book_keeper)
+        .run();
+
+    val reviews = book_review @* { };
+    val book = book @ { .isbn == "00000001" };
+
+    assert_equals(reviews.size(), 2);
+    assert_equals(book, reviews[0].book);
+    assert_equals(reviews[0].reviewer_name, "某網友");
+    assert_equals(reviews[0].review, "這是一本好書");
+    assert_equals(reviews[0].rating, 5);
+}
+
+function test_add_book_review_for_missing_book() {
+    rell.test.tx()
+        .op(create_book_review("N/A", "某網友", "這是一本不存在不書", 3))
+        .run_must_fail("Book with isbn N/A not found");
+}
+
+
+val bob = rell.test.keypairs.bob;
+
+function test_add_book_as_non_admin() {
+    rell.test.tx()
+        .op(create_book("12345678", "don't have permission to create", "normal user"))
+        .sign(bob)
+        .run_must_fail();
+}
+
+function test_get_reviews_by_rating() {
+    rell.test.tx()
+        .op(create_book("00000001", "抹茶的自傳", "GJLMoTea"))
+        .op(create_book_review("00000001", "網友A", "這是一本好書！", 4))
+        .op(create_book_review("00000001", "網友B", "這是一本頂級的書！", 5))
+        .op(create_book_review("00000001", "網友C", "書本內容還不錯", 4))
+        .op(create_book_review("00000001", "酸民", "寫得有夠爛！", 1))
+        .sign(book_keeper)
+        .run();
+    val reviews = get_reviews_by_rating(4);
+    assert_equals(reviews.size(), 2);
+}
+
+function test_get_sorted_reviews_by_rating() {
+    rell.test.tx()
+        .op(create_book("00000001", "抹茶的自傳", "GJLMoTea"))
+        .op(create_book_review("00000001", "網友A", "這是一本好書！", 5))
+        .op(create_book_review("00000001", "網友B", "這是一本不太好的書", 2))
+        .op(create_book_review("00000001", "網友C", "書本內容還不錯", 4))
+        .sign(book_keeper)
+        .run();
+    val reviews = get_all_reviews_for_book("00000001");
+    assert_equals(reviews.size(), 3);
+    assert_equals(reviews[0].rating, 2);
+    assert_equals(reviews[1].rating, 4);
+    assert_equals(reviews[2].rating, 5);
+}
+
+struct book_review_dto {
+    book: struct<book>;
+    reviewer_name: text;
+    review: text;
+    rating: integer;
+}

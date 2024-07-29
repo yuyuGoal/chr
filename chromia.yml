@@ -1,0 +1,29 @@
+blockchains:
+  yuyugoal:
+    module: main
+    moduleArgs:
+      main:
+        admin_pubkey: 023D2B6A585205F2DCCCC85CFFB903F3EAAFC488DA67C32A07F3FDC4015E83A5F4
+
+compile:
+  rellVersion: 0.13.5
+
+database:
+  schema: schema_yuyugoal
+
+test:
+  modules:
+    - test
+  moduleArgs:
+    main:
+      admin_pubkey: "023D2B6A585205F2DCCCC85CFFB903F3EAAFC488DA67C32A07F3FDC4015E83A5F4"
+
+deployments:
+  testnet: # Deployment Target name
+    brid: x"69035D70A99A6BFAF887E415352B40589F1AD1F8D2ADF848FE995B23A8EC2127" # Blockchain RID for the testnet management chain
+    url: https://node0.projectnet.chromia.dev:7740 # Target URL for one of the nodes in the testnet
+    container: b491a5092ba7658ece8cdb33c5040c0f57f94a784db559aa62731a7cfd995516
+    chains:
+      yuyugoal: x"C56CB4599AD1C80DA3A5D3740DDC3029451847B8AB228C0E17E0F8E0E1ADBC12"
+
+
