@@ -16,16 +16,18 @@ entity post {
     content: text;
 }
 
+function format_user(user) = "%s#%s".format(user.name, user.id.to_hex().sub(0, 5));
+function require_is_signer(pubkey) = require(op_context.is_signer(pubkey), "User must sign this operation");
+function require_user(id: byte_array) = require(user @? { id }, "User with id %b does not exist".format(id));
+function limit_content(content: text) = require(content.size() <= 255, "A post cannot be longer than 255 letters");
+
 operation create_user(name, pubkey) {
     create user( name = name, id = pubkey );
 }
 
-//operation create_user(name, pubkey: text) {
-//    var id = byte_array(pubkey);
-//    create user( name = name, id = id );
-//}
-
 operation make_post(user_id: byte_array, content: text) {
+    require_is_signer(user_id);
+    limit_content(content);
     create post(
         user @ { user_id },
         content
@@ -33,6 +35,7 @@ operation make_post(user_id: byte_array, content: text) {
 }
 
 operation follow_user(user_id: byte_array, follow_id: byte_array) {
+    require_is_signer(user_id);
     val user = user @ { user_id };
     val follow = user @ { follow_id };
     create follower(
@@ -42,13 +45,14 @@ operation follow_user(user_id: byte_array, follow_id: byte_array) {
 }
 
 operation unfollow_user(user_id: byte_array, unfollow_id: byte_array) {
+    require_is_signer(user_id);
     val user = user @ { user_id };
     val unfollow = user @ { unfollow_id };
     delete follower @? { .user == unfollow, .follower == user };
 }
 
 query get_user_name(user_id: byte_array): text {
-    return user @ { user_id } ("%s#%s".format(.name, .id.to_hex().sub(0, 5)));
+    return format_user(require_user(user_id));
 }
 
 query get_user_id(name: text): byte_array {
@@ -56,11 +60,11 @@ query get_user_id(name: text): byte_array {
 }
 
 query get_followers_count(user_id: byte_array): integer {
-    return follower @ { .user == user @ { user_id } } (@sum 1);
+    return follower @ { .user == require_user(user_id) } (@sum 1);
 }
 
 query get_following_count(user_id: byte_array): integer {
-    return follower @ { .follower == user @ { user_id } } (@sum 1);
+    return follower @ { .follower == require_user(user_id) } (@sum 1);
 }
 
 query is_following(my_id: byte_array, your_id: byte_array) =
@@ -97,7 +101,7 @@ query get_posts(
 }
 
 query get_users(pointer: integer, n_users: integer) {
-    val users = user @* {} (name = "%s#%s".format(.name, .id.to_hex().sub(0, 5)), id = .id) offset pointer limit n_users;
+    val users = user @* {} (name = format_user($), id = .id) offset pointer limit n_users;
     return (
         pointer = pointer + users.size(),
         users = users

@@ -3,32 +3,31 @@
 import news_feed.*;
 
 val alice = rell.test.pubkeys.alice;
+val alice_kp = rell.test.keypairs.alice;
 val bob = rell.test.pubkeys.bob;
+val bob_kp = rell.test.keypairs.bob;
+val charlie = rell.test.pubkeys.charlie;
+val charlie_kp = rell.test.keypairs.charlie;
 
 function test_create_entities() {
-    // Test the creation of two users: Alice and Bob
     rell.test.tx()
         .op(create_user("Alice", alice))
         .op(create_user("Bob", bob))
         .run();
-
-    // Check if there are two users in the user table
     assert_equals(user @ { } (@sum 1), 2);
-
-    // Alice follows Bob and makes a post
     rell.test.tx()
         .op(follow_user(alice, bob))
         .op(make_post(alice, "My post"))
+        .sign(alice_kp)
         .run();
-
-    // Check if there is one follower and one post
+    assert_true(is_following(alice, bob));
     assert_equals(follower @ { } (@sum 1), 1);
     assert_equals(post @ { } (@sum 1), 1);
-
-    // Alice unfollows Bob and no followers should now exist
     rell.test.tx()
         .op(unfollow_user(alice, bob))
+        .sign(alice_kp)
         .run();
+    assert_false(is_following(alice, bob));
     assert_equals(follower @ { } (@sum 1), 0);
 }
 
@@ -43,7 +42,6 @@ function test_user_name() {
     assert_true(users_result.users @* {} (.name).contains("Alice#02466"));
 }
 
-val charlie = rell.test.pubkeys.charlie;
 
 function test_follower_calculation() {
     rell.test.tx()
@@ -55,6 +53,7 @@ function test_follower_calculation() {
     rell.test.tx()
         .op(follow_user(alice, bob))
         .op(follow_user(alice, charlie))
+        .sign(alice_kp)
         .run();
 
     assert_true(is_following(alice, bob));
@@ -71,10 +70,13 @@ function test_pagination_of_posts() {
         .op(create_user("Alice", alice))
         .op(create_user("Bob", bob))
         .run();
-    rell.test.tx().op(follow_user(alice, bob)).run();
+    rell.test.tx()
+        .op(follow_user(alice, bob))
+        .sign(alice_kp)
+        .run();
 
     for (i in range(5)) {
-        rell.test.tx().op(make_post(bob, "Content %d".format(i))).run();
+        rell.test.tx().op(make_post(bob, "Content %d".format(i))).sign(bob_kp).run(); // <--
     }
 
     val initial_posts = get_posts(alice, 0, 4);
@@ -83,4 +85,34 @@ function test_pagination_of_posts() {
     val last_posts = get_posts(alice, initial_posts.pointer, 4);
     assert_equals(last_posts.pointer, 5);
     assert_equals(last_posts.posts.size(), 1);
+}
+
+function test_input_verification() {
+    rell.test.tx()
+        .op(create_user("Alice", alice))
+        .op(create_user("Bob", bob)).run();
+
+    // Bob cannot impersonate Alice
+    rell.test.tx()
+        .op(follow_user(alice, bob))
+        .sign(bob_kp)
+        .run_must_fail();
+    rell.test.tx()
+        .op(make_post(alice, "My malicious post"))
+        .sign(bob_kp)
+        .run_must_fail();
+
+    // Alice cannot follow non-existing Charlie
+    val f1 = rell.test.tx()
+        .op(follow_user(alice, charlie))
+        .sign(alice_kp)
+        .run_must_fail();
+    assert_false(f1.message.contains("does not exist"));
+
+    // Charlie cannot create a post since he does not exist
+    val f2 = rell.test.tx()
+        .op(make_post(charlie, "My secret post"))
+        .sign(charlie_kp)
+        .run_must_fail();
+    assert_false(f2.message.contains("does not exist"));
 }
