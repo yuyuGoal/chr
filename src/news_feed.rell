@@ -1,0 +1,105 @@
+module;
+entity user {
+    mutable name;
+    key id: byte_array;
+}
+
+entity follower {
+    index user;
+    index follower: user;
+    key user, follower;
+}
+
+entity post {
+    timestamp = op_context.last_block_time;
+    index user;
+    content: text;
+}
+
+operation create_user(name, pubkey) {
+    create user( name = name, id = pubkey );
+}
+
+//operation create_user(name, pubkey: text) {
+//    var id = byte_array(pubkey);
+//    create user( name = name, id = id );
+//}
+
+operation make_post(user_id: byte_array, content: text) {
+    create post(
+        user @ { user_id },
+        content
+    );
+}
+
+operation follow_user(user_id: byte_array, follow_id: byte_array) {
+    val user = user @ { user_id };
+    val follow = user @ { follow_id };
+    create follower(
+        user = follow,
+        follower = user
+    );
+}
+
+operation unfollow_user(user_id: byte_array, unfollow_id: byte_array) {
+    val user = user @ { user_id };
+    val unfollow = user @ { unfollow_id };
+    delete follower @? { .user == unfollow, .follower == user };
+}
+
+query get_user_name(user_id: byte_array): text {
+    return user @ { user_id } ("%s#%s".format(.name, .id.to_hex().sub(0, 5)));
+}
+
+query get_user_id(name: text): byte_array {
+    return user @ { .name == name } (.id);
+}
+
+query get_followers_count(user_id: byte_array): integer {
+    return follower @ { .user == user @ { user_id } } (@sum 1);
+}
+
+query get_following_count(user_id: byte_array): integer {
+    return follower @ { .follower == user @ { user_id } } (@sum 1);
+}
+
+query is_following(my_id: byte_array, your_id: byte_array) =
+    exists(follower @? { .user.id == your_id, .follower.id == my_id });
+
+struct post_dto {
+    timestamp;
+    user: struct<user>;
+    content: text;
+}
+
+query get_posts(
+    user_id: byte_array,
+    pointer: integer,
+    n_posts: integer
+): (pointer: integer, posts: list<post_dto>) {
+    val posts = (user, follower, post) @* {
+        user.id == user_id,
+        follower.follower == user,
+        post.user == follower.user
+    } (
+        @sort_desc @omit post.rowid,
+        post_dto(
+            post.timestamp,
+            post.content,
+            user = post.user.to_struct()
+        )
+    ) offset pointer limit n_posts;
+
+    return (
+        pointer = pointer + posts.size(),
+        posts = posts
+    );
+}
+
+query get_users(pointer: integer, n_users: integer) {
+    val users = user @* {} (name = "%s#%s".format(.name, .id.to_hex().sub(0, 5)), id = .id) offset pointer limit n_users;
+    return (
+        pointer = pointer + users.size(),
+        users = users
+    );
+}

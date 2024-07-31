@@ -2,8 +2,8 @@ blockchains:
   yuyugoal:
     module: main
     moduleArgs:
-      main:
-        admin_pubkey: 023D2B6A585205F2DCCCC85CFFB903F3EAAFC488DA67C32A07F3FDC4015E83A5F4
+      book_review:
+        admin_pubkey: "023D2B6A585205F2DCCCC85CFFB903F3EAAFC488DA67C32A07F3FDC4015E83A5F4"
 
 compile:
   rellVersion: 0.13.5
@@ -15,7 +15,7 @@ test:
   modules:
     - test
   moduleArgs:
-    main:
+    book_review:
       admin_pubkey: "023D2B6A585205F2DCCCC85CFFB903F3EAAFC488DA67C32A07F3FDC4015E83A5F4"
 
 deployments:

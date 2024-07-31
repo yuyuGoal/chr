@@ -1,6 +1,6 @@
 @test module;
 
-import main.{ book, create_book, get_all_books, book_review, create_book_review, get_reviews_by_rating, get_all_reviews_for_book };
+import book_review.{ book, create_book, get_all_books, book_review, create_book_review, get_reviews_by_rating, get_all_reviews_for_book };
 
 val book_keeper = rell.test.keypair(
     priv = x"38DB92E6A14CB82985ADEB347895E1B7E6F893BC56FEC8BB2FA9C87A6B0298E8",
