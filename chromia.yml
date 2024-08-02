@@ -14,9 +14,6 @@ database:
 test:
   modules:
     - test
-  moduleArgs:
-    book_review:
-      admin_pubkey: "023D2B6A585205F2DCCCC85CFFB903F3EAAFC488DA67C32A07F3FDC4015E83A5F4"
 
 deployments:
   testnet: # Deployment Target name
