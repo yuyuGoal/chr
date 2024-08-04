@@ -1,0 +1,59 @@
+module;
+
+entity schedule {
+//    key guid: text;
+    mutable id: integer;
+    mutable subject: text;
+    mutable startTime: text;
+    mutable endTime: text;
+    mutable startTimezone: text;
+    mutable endTimezone: text;
+    mutable isAllDay: boolean;
+    mutable isBlock: boolean;
+    mutable isReadonly: boolean;
+    mutable recurrenceRule: text;
+//    RoomId: integer;
+//    ResourceId: integer;
+}
+
+//chr tx --await create_schedule "01" "開會" "2024-08-05 14:30:00" "2024-08-05 15:30:00" "" "" 0 0 0 ""
+//chr tx --await create_schedule "02" "跑步" "2024-08-21T16:00:00.000Z" "2024-08-21T18:00:00.000Z" "" "" 0 0 0 "FREQ=WEEKLY;BYDAY=MO,FR;COUNT=100"
+//chr tx --await create_schedule "03" "寫程式" "2024-08-08 09:30:00" "2024-08-08 11:30:00" "" "" 0 0 0 "FREQ=WEEKLY;BYDAY=MO,TH;INTERVAL=1;UNTIL=20251013T160000Z;"
+//chr tx --await create_schedule "04" "補習班看書" "2024-06-05 09:00:00" "2024-06-05 12:00:00" "" "" 0 0 0 "FREQ=DAILY;INTERVAL=3;COUNT=5;"
+operation create_schedule(id: integer, subject: text, startTime: text, endTime: text, startTimezone: text, endTimezone: text, isAllDay: boolean, isBlock: boolean, isReadonly: boolean, recurrenceRule: text) {
+    create schedule (id, subject, startTime, endTime, startTimezone, endTimezone, isAllDay, isBlock, isReadonly, recurrenceRule);
+}
+
+query get_all_schedules() {
+    return schedule @* { } (
+        .id,
+        .subject,
+        .startTime,
+        .endTime,
+        .startTimezone,
+        .endTimezone,
+        .isAllDay,
+        .isBlock,
+        .isReadonly,
+        .recurrenceRule
+    );
+}
+
+operation update_schedule(id: integer, subject: text, startTime: text, endTime: text, startTimezone: text, endTimezone: text, isAllDay: boolean, isBlock: boolean, isReadonly: boolean, recurrenceRule: text) {
+    update schedule @? { .id == id } (
+        .subject = subject,
+        .startTime = startTime,
+        .endTime = endTime,
+        .startTimezone = startTimezone,
+        .endTimezone = endTimezone,
+        .isAllDay = isAllDay,
+        .isBlock = isBlock,
+        .isReadonly = isReadonly,
+        .recurrenceRule = recurrenceRule
+    );
+}
+
+operation delete_schedule(id: integer) {
+    delete schedule @? { .id == id };
+}
+
